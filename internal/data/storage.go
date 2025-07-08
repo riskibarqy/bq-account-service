@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/riskibarqy/go-template/utils"
+	"github.com/riskibarqy/bq-account-service/utils"
 )
 
 // ErrNotEnough declare specific error for Not Enough

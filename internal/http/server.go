@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/riskibarqy/go-template/config"
-	"github.com/riskibarqy/go-template/internal/data"
-	"github.com/riskibarqy/go-template/internal/http/controller"
-	"github.com/riskibarqy/go-template/internal/user"
+	"github.com/riskibarqy/bq-account-service/config"
+	"github.com/riskibarqy/bq-account-service/internal/data"
+	"github.com/riskibarqy/bq-account-service/internal/http/controller"
+	"github.com/riskibarqy/bq-account-service/internal/user"
 	"github.com/rs/cors"
 )
 
@@ -61,7 +61,7 @@ func (hs *Server) compileRouter() chi.Router {
 	r.Use(cors.Handler)
 
 	// Define the base URL for the API
-	baseURL := "/account-service/v1"
+	baseURL := "/bq-account-service/v1"
 
 	// Public Routes (No authorization required)
 	r.HandleFunc(baseURL+"/healthcheck", func(w http.ResponseWriter, r *http.Request) {
@@ -70,27 +70,28 @@ func (hs *Server) compileRouter() chi.Router {
 		// w.Write([]byte("success"))
 	})
 
-	r.HandleFunc(baseURL+"/login", hs.userController.Login)
+	// r.HandleFunc(baseURL+"/login", hs.userController.Login)
 
 	// Private Routes (Authorization required)
 	r.Route(baseURL+"/private", func(r chi.Router) {
 		// Middleware for authorized requests
 		r.Use(hs.authorizedOnly(hs.userService))
 
-		// Logout (protected by authorization)
-		hs.authMethod(r, "GET", "/logout", hs.userController.Logout)
-
 		// Private User routes (require authorization)
-		hs.authMethod(r, "PUT", "/users/changePassword", hs.userController.ChangePassword)
-		hs.authMethod(r, "PUT", "/users/{userId}", hs.userController.UpdateUser)
+		// hs.authMethod(r, "PUT", "/users/changePassword", hs.userController.ChangePassword)
+		// hs.authMethod(r, "PUT", "/users/{userId}", hs.userController.UpdateUser)
 		hs.authMethod(r, "GET", "/users", hs.userController.ListUser)
-		hs.authMethod(r, "GET", "/users/{userId}", hs.userController.GetUserByID)
-		hs.authMethod(r, "POST", "/users", hs.userController.CreateUser)
-		hs.authMethod(r, "DELETE", "/users/{userId}", hs.userController.DeleteUser)
+		// hs.authMethod(r, "GET", "/users/{userId}", hs.userController.GetUserByID)
+		// hs.authMethod(r, "POST", "/users", hs.userController.CreateUser)
+		// hs.authMethod(r, "DELETE", "/users/{userId}", hs.userController.DeleteUser)
 	})
 
 	// Public Users Route
-	r.HandleFunc(baseURL+"/public/users", hs.userController.ListUser) // Add any public-specific user operations
+	// Public Users Routes
+	r.Route(baseURL+"/public/users", func(r chi.Router) {
+		r.Get("/", hs.userController.ListUser)    // GET /public/users
+		r.Post("/", hs.userController.CreateUser) // POST /public/users (register)
+	})
 
 	return r
 }
@@ -105,8 +106,9 @@ func (hs *Server) Serve() {
 	// Run the server + gracefully shutdown mechanism
 	//
 
-	log.Printf("About to listen on 8080. Go to http://127.0.0.1:8080")
-	srv := http.Server{Addr: ":8080", Handler: r}
+	port := config.AppConfig.AppPort
+	log.Printf("About to listen on %s. Go to http://127.0.0.1:%s", port, port)
+	srv := http.Server{Addr: ":" + port, Handler: r}
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

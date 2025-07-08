@@ -1,20 +1,16 @@
-CREATE TABLE public."user"
-(
-    "id" SERIAL NOT NULL,
-    "name" VARCHAR(100) NOT NULL,
+CREATE TABLE public."user" (
+    "id" SERIAL PRIMARY KEY,
+    "clerk_id" VARCHAR(100) NOT NULL UNIQUE,
     "email" VARCHAR(100) NOT NULL UNIQUE,
-    "password" VARCHAR(255) NOT NULL,
-    "token" TEXT,
-    "token_expired_at" INT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "username" VARCHAR(50) NOT NULL UNIQUE,  -- e.g., 'john_doe'
+    "phone" VARCHAR(20) NOT NULL UNIQUE,  -- e.g., '+6281234567890'
+    "is_active" BOOLEAN NOT NULL DEFAULT TRUE,  -- Indicates if the user is active
+    "is_verified" BOOLEAN NOT NULL DEFAULT FALSE,  -- Indicates if the user has verified
     "created_at" INT NOT NULL,
     "updated_at" INT NOT NULL,
-    "deleted_at" INT,
-    CONSTRAINT user_pkey PRIMARY KEY ("id")
+    "deleted_at" INT
 );
 
--- Add an index on email for faster lookups
 CREATE INDEX user_email_idx ON public."user"("email");
-
--- Add an index on deleted_at to optimize soft delete queries
 CREATE INDEX user_deleted_at_idx ON public."user"("deleted_at");
-

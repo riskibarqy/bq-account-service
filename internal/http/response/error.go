@@ -3,10 +3,9 @@ package response
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
-	"github.com/riskibarqy/go-template/internal/types"
+	"github.com/riskibarqy/bq-account-service/internal/types"
 
 	validator "gopkg.in/go-playground/validator.v9"
 
@@ -72,8 +71,8 @@ func Error(w http.ResponseWriter, data string, status int, err types.Error) {
 	})
 
 	if err.Error != nil {
-		log.Printf("INFO: %v\n", err.Error.Error())
-		log.Printf("DETAIL [%s - %s]: %s\n", err.Path, err.Type, err.Message)
+		// log.Printf("INFO: %v\n", err.Error.Error())
+		// log.Printf("DETAIL [%s - %s]: %s\n", err.Path, err.Type, err.Message)
 		type stackTracer interface {
 			StackTrace() errors.StackTrace
 		}

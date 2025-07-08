@@ -8,14 +8,16 @@ import (
 	"github.com/ancalabrese/reload"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/riskibarqy/go-template/config"
-	"github.com/riskibarqy/go-template/databases"
-	"github.com/riskibarqy/go-template/internal/data"
-	internalhttp "github.com/riskibarqy/go-template/internal/http"
-	"github.com/riskibarqy/go-template/internal/redis"
-	"github.com/riskibarqy/go-template/internal/user"
-	userPg "github.com/riskibarqy/go-template/internal/user/postgres"
-	"github.com/riskibarqy/go-template/models"
+	"github.com/riskibarqy/bq-account-service/config"
+	"github.com/riskibarqy/bq-account-service/databases"
+	"github.com/riskibarqy/bq-account-service/external/clerk"
+	"github.com/riskibarqy/bq-account-service/external/logger"
+	"github.com/riskibarqy/bq-account-service/internal/data"
+	internalhttp "github.com/riskibarqy/bq-account-service/internal/http"
+	"github.com/riskibarqy/bq-account-service/internal/redis"
+	"github.com/riskibarqy/bq-account-service/internal/user"
+	userPg "github.com/riskibarqy/bq-account-service/internal/user/postgres"
+	"github.com/riskibarqy/bq-account-service/models"
 )
 
 var ctx = context.Background()
@@ -69,7 +71,17 @@ func main() {
 	config.GetConfiguration()
 
 	databases.Init()
+	defer func() {
+		if config.AppConfig.DatabaseClient != nil {
+			_ = config.AppConfig.DatabaseClient.Close()
+			log.Println("Database connection closed")
+		}
+	}()
+
 	redis.Init()
+	clerk.Init()
+	logger.Init()
+	defer logger.Shutdown(ctx)
 
 	// Print the current mode
 	fmt.Printf("Running in %s mode\n", config.AppConfig.AppMode)

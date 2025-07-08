@@ -11,19 +11,33 @@ import (
 
 const (
 	appMode            = "APP_MODE"
+	appName            = "APP_NAME"
+	appVersion         = "APP_VERSION"
+	appDescription     = "APP_DESCRIPTION"
+	appPort            = "APP_PORT"
 	dbConnectionString = "DB_CONNECTION_STRING"
 	jwtSecret          = "JWT_SECRET"
-	redisAddr          = "REDIS_ADDR"
-	redisPassword      = "REDIS_PASSWORD"
+	clerkSecretKey     = "CLERK_SECRET_KEY"
+	redisURL           = "REDIS_URL"
+	uptraceDSN         = "UPTRACE_DSN"
+
+	redisExpirationShort  = "REDIS_EXPIRATION_SHORT"
+	redisExpirationMedium = "REDIS_EXPIRATION_MEDIUM"
+	redisExpirationLong   = "REDIS_EXPIRATION_LONG"
 )
 
 // Config contains application configuration
 type Config struct {
 	AppMode            string `json:"appMode"`
+	AppName            string `json:"appName"`
+	AppVersion         string `json:"appVersion"`
+	AppDescription     string `json:"appDescription"`
+	AppPort            string `json:"appPort"`
 	DBConnectionString string `json:"dbConnectionString"`
 	JWTSecret          string `json:"jwtSecret"`
-	RedisAddr          string `json:"redisAddr"`
-	RedisPassword      string `json:"redisPassword"`
+	ClerkSecretKey     string `json:"clerkSecret"`
+	RedisURL           string `json:"redisUrl"`
+	UptraceDSN         string `json:"uptraceDsn"`
 
 	DatabaseClient *sqlx.DB
 }
@@ -68,17 +82,26 @@ func getEnvOrDefault(env string, defaultVal interface{}) interface{} {
 	}
 }
 
-// GetConfiguration retrieves application configuration based on set environment
 func GetConfiguration() {
-	// Load .env file in development
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("No .env file found, using system environment variables")
+		log.Fatal(err)
+		return
 	}
 
 	AppConfig.AppMode = getEnvOrDefault(appMode, "development").(string)
-	AppConfig.DBConnectionString = getEnvOrDefault(dbConnectionString, "postgres://user:password@localhost/account_db?sslmode=disable").(string)
-	AppConfig.JWTSecret = getEnvOrDefault(jwtSecret, "verysecrettext").(string)
-	AppConfig.RedisAddr = getEnvOrDefault(redisAddr, "localhost:6379").(string)
-	AppConfig.RedisPassword = getEnvOrDefault(redisPassword, "password").(string)
+	AppConfig.AppName = getEnvOrDefault(appName, "account-service").(string)
+	AppConfig.AppVersion = getEnvOrDefault(appVersion, "v1.0.0").(string)
+	AppConfig.AppDescription = getEnvOrDefault(appDescription, "Account Service").(string)
+	AppConfig.AppPort = getEnvOrDefault(appPort, "8080").(string)
+
+	AppConfig.DBConnectionString = getEnvOrDefault(dbConnectionString, "postgres://user:password@localhost:5432/account_db?sslmode=disable").(string)
+	AppConfig.JWTSecret = getEnvOrDefault(jwtSecret, "supersecret").(string)
+	AppConfig.ClerkSecretKey = getEnvOrDefault(clerkSecretKey, "test").(string)
+	AppConfig.RedisURL = getEnvOrDefault(redisURL, "redis://localhost:6379").(string)
+	AppConfig.UptraceDSN = getEnvOrDefault(uptraceDSN, "").(string)
+
+	MetadataConfig.RedisExpirationShort = getEnvOrDefault(redisExpirationShort, 60).(int)
+	MetadataConfig.RedisExpirationMedium = getEnvOrDefault(redisExpirationMedium, 3600).(int)
+	MetadataConfig.RedisExpirationLong = getEnvOrDefault(redisExpirationLong, 86400).(int)
 }

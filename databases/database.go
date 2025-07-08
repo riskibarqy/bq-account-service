@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/riskibarqy/go-template/config"
+	"github.com/riskibarqy/bq-account-service/config"
 )
 
 // Init Connect to the database

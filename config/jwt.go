@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/riskibarqy/go-template/models"
+	"github.com/riskibarqy/bq-account-service/models"
 )
 
 // Define a struct for the JWT claims (you can customize this as needed)

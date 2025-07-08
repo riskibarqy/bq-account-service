@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	clerkUser "github.com/clerk/clerk-sdk-go/v2/user"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/riskibarqy/bq-account-service/config"
 	"github.com/riskibarqy/bq-account-service/datatransfers"
@@ -26,8 +25,7 @@ var (
 	ErrNotFound           = errors.New("not found")
 	ErrNoInput            = errors.New("no input")
 	ErrLimitInput         = errors.New("name should be more than 5 char")
-	ErrNameAlreadyExist   = errors.New("name already exits")
-	ErrClerkValidationErr = errors.New("clerk validation error")
+	ErrNameAlreadyExist   = errors.New(("name already exits"))
 )
 
 // Storage represents the user storage interface
@@ -44,7 +42,7 @@ type Storage interface {
 type ServiceInterface interface {
 	ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.User, int, *types.Error)
 	// GetUser(ctx context.Context, userID int) (*models.User, *types.Error)
-	CreateUser(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error)
+	// CreateUser(ctx context.Context, params *models.User) (*models.User, *types.Error)
 	// UpdateUser(ctx context.Context, userID int, params *models.User) (*models.User, *types.Error)
 	// DeleteUser(ctx context.Context, userID int) *types.Error
 	// ChangePassword(ctx context.Context, userID int, oldPassword, newPassword string) *types.Error
@@ -132,62 +130,54 @@ func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllPa
 // 	return user, nil
 // }
 
-// CreateUser create user
-func (s *Service) CreateUser(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error) {
-	users, _, errType := s.ListUsers(ctx, &datatransfers.FindAllParams{
-		Email: params.Email,
-	})
-	if errType != nil {
-		errType.Path = ".UserService->CreateUser()" + errType.Path
-		return nil, errType
-	}
-	if len(users) > 0 {
-		return nil, &types.Error{
-			Path:    ".UserService->CreateUser()",
-			Message: ErrEmailAlreadyExists.Error(),
-			Error:   ErrEmailAlreadyExists,
-			Type:    "validation-error",
-		}
-	}
+// // CreateUser create user
+// func (s *Service) CreateUser(ctx context.Context, params *models.User) (*models.User, *types.Error) {
+// 	users, _, errType := s.ListUsers(ctx, &datatransfers.FindAllParams{
+// 		Email: params.Email,
+// 	})
+// 	if errType != nil {
+// 		errType.Path = ".UserService->CreateUser()" + errType.Path
+// 		return nil, errType
+// 	}
+// 	if len(users) > 0 {
+// 		return nil, &types.Error{
+// 			Path:    ".UserService->CreateUser()",
+// 			Message: ErrEmailAlreadyExists.Error(),
+// 			Error:   ErrEmailAlreadyExists,
+// 			Type:    "validation-error",
+// 		}
+// 	}
 
-	f, l := utils.SplitName(params.Name)
+// 	bcryptHash, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
+// 	if err != nil {
+// 		return nil, &types.Error{
+// 			Path:    ".UserService->CreateUser()",
+// 			Message: err.Error(),
+// 			Error:   err,
+// 			Type:    "golang-error",
+// 		}
+// 	}
 
-	clerkCreateResponse, errClerk := clerkUser.Create(ctx, &clerkUser.CreateParams{
-		EmailAddresses: &[]string{params.Email},
-		Username:       &params.Username,
-		// PhoneNumbers:   &[]string{params.Phone},
-		Password:  &params.Password,
-		FirstName: &f,
-		LastName:  &l,
-	})
-	if errClerk != nil {
-		return nil, &types.Error{
-			Path:    ".UserService->CreateUser()",
-			Message: errClerk.Error(),
-			Error:   errClerk,
-			Type:    "validation-error",
-		}
-	}
+// 	now := utils.Now()
 
-	now := utils.Now()
-	user := &models.User{
-		ClerkID:  clerkCreateResponse.ID,
-		Name:     *clerkCreateResponse.FirstName + " " + *clerkCreateResponse.LastName,
-		Email:    *clerkCreateResponse.PrimaryEmailAddressID,
-		Username: *clerkCreateResponse.Username,
-		// Phone:     *clerkCreateResponse.PrimaryPhoneNumberID,
-		CreatedAt: now,
-		UpdatedAt: &now,
-	}
+// 	user := &models.User{
+// 		Name:     params.Name,
+// 		Email:    params.Email,
+// 		Password: string(bcryptHash),
+// 		// Token:          nil,
+// 		// TokenExpiredAt: nil,
+// 		CreatedAt: now,
+// 		UpdatedAt: &now,
+// 	}
 
-	user, errType = s.userStorage.Insert(ctx, user)
-	if errType != nil {
-		errType.Path = ".UserService->CreateUser()" + errType.Path
-		return nil, errType
-	}
+// 	user, errType = s.userStorage.Insert(ctx, user)
+// 	if errType != nil {
+// 		errType.Path = ".UserService->CreateUser()" + errType.Path
+// 		return nil, errType
+// 	}
 
-	return user, nil
-}
+// 	return user, nil
+// }
 
 // // UpdateUser update a user
 // func (s *Service) UpdateUser(ctx context.Context, userID int, params *models.User) (*models.User, *types.Error) {

@@ -1,1 +1,1 @@
-drop table if exists "user";
+drop table public."user";

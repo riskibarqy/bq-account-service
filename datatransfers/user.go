@@ -1,6 +1,6 @@
 package datatransfers
 
-import "github.com/riskibarqy/go-template/models"
+import "github.com/riskibarqy/bq-account-service/models"
 
 // LoginParams represent the http request data for login user
 type LoginParams struct {
@@ -18,4 +18,12 @@ type LoginResponse struct {
 type ChangePasswordParams struct {
 	OldPassword string `json:"oldPassword"`
 	NewPassword string `json:"newPassword"`
+}
+
+type RegisterUser struct {
+	Name     string `json:"name" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Username string `json:"username"`
+	Phone    string `json:"phone"`
+	Password string
 }

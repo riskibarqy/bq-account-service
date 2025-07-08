@@ -2,10 +2,10 @@ package redis
 
 import (
 	"context"
-	"log"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/riskibarqy/go-template/config"
+	"github.com/riskibarqy/bq-account-service/config"
+	"github.com/riskibarqy/bq-account-service/external/logger"
 )
 
 var ctx = context.Background()
@@ -15,14 +15,15 @@ var RedisClient *redis.Client
 
 // Init initializes the Redis client
 func Init() {
-	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     config.AppConfig.RedisAddr,
-		Password: config.AppConfig.RedisPassword,
-	})
+	opt, err := redis.ParseURL(config.AppConfig.RedisURL)
+	if err != nil {
+		logger.Log(ctx, logger.LevelError, err.Error(), err)
+	}
+	RedisClient = redis.NewClient(opt)
 
 	// Test the connection
-	_, err := RedisClient.Ping(ctx).Result()
+	_, err = RedisClient.Ping(ctx).Result()
 	if err != nil {
-		log.Fatalln(err)
+		logger.Log(ctx, logger.LevelError, err.Error(), err)
 	}
 }

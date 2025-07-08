@@ -1,16 +1,12 @@
 package http
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
-	"github.com/riskibarqy/go-template/internal/appcontext"
-	"github.com/riskibarqy/go-template/internal/data"
-	"github.com/riskibarqy/go-template/internal/http/response"
-	"github.com/riskibarqy/go-template/internal/types"
-	"github.com/riskibarqy/go-template/internal/user"
-	"github.com/riskibarqy/go-template/utils"
+	"github.com/riskibarqy/bq-account-service/internal/http/response"
+	"github.com/riskibarqy/bq-account-service/internal/types"
+	"github.com/riskibarqy/bq-account-service/internal/user"
 )
 
 func (hs *Server) authorizedOnly(userService user.ServiceInterface) func(next http.Handler) http.Handler {
@@ -29,32 +25,6 @@ func (hs *Server) authorizedOnly(userService user.ServiceInterface) func(next ht
 				})
 				return
 			}
-
-			singleUser, err := userService.GetByToken(ctx, token)
-			if err != nil {
-				if err.Error != data.ErrNotFound {
-					response.Error(w, "Internal Server Error", http.StatusInternalServerError, *err)
-					return
-				}
-				response.Error(w, "Unauthorized", http.StatusUnauthorized, types.Error{
-					Path:    ".Server->authorizeOnly()",
-					Message: "",
-					Error:   nil,
-					Type:    "",
-				})
-				return
-			}
-			if utils.Now() > *singleUser.TokenExpiredAt {
-				response.Error(w, "Unauthorized", http.StatusUnauthorized, types.Error{
-					Path:    ".Server->authorizeOnly()",
-					Message: "",
-					Error:   nil,
-					Type:    "",
-				})
-				return
-			}
-			ctx = context.WithValue(ctx, appcontext.KeyUserID, singleUser.ID)
-			ctx = context.WithValue(ctx, appcontext.KeySessionID, *singleUser.Token)
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
