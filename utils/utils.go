@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func Now() int {
@@ -32,4 +33,37 @@ func SplitName(fullName string) (firstName, lastName string) {
 	}
 
 	return firstName, lastName
+}
+
+// CreateUsernameFromEmail returns a sanitized username generated from an email address.
+// e.g., "john.doe@example.com" → "john_doe"
+func CreateUsernameFromEmail(email string) string {
+	// Extract the part before @
+	atIndex := strings.Index(email, "@")
+	if atIndex == -1 {
+		return "invalid_username"
+	}
+
+	prefix := email[:atIndex]
+
+	// Replace dots with underscores, remove invalid characters
+	var builder strings.Builder
+	for _, ch := range prefix {
+		switch {
+		case unicode.IsLetter(ch), unicode.IsDigit(ch):
+			builder.WriteRune(ch)
+		case ch == '.' || ch == '-' || ch == '_':
+			builder.WriteRune('_')
+			// ignore other characters
+		}
+	}
+
+	username := builder.String()
+
+	// Ensure it’s not empty
+	if username == "" {
+		return "user"
+	}
+
+	return username
 }

@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/riskibarqy/bq-account-service/datatransfers"
-	"github.com/riskibarqy/bq-account-service/external/logger"
 	"github.com/riskibarqy/bq-account-service/internal/data"
 	"github.com/riskibarqy/bq-account-service/internal/http/response"
 	"github.com/riskibarqy/bq-account-service/internal/types"
@@ -156,7 +155,7 @@ type UserList struct {
 
 // }
 
-func (a *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
+func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 	var err *types.Error
 
 	decoder := json.NewDecoder(r.Body)
@@ -165,12 +164,11 @@ func (a *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 	errDecode := decoder.Decode(&params)
 	if errDecode != nil {
 		err = &types.Error{
-			Path:    ".UserController->CreateUser()",
+			Path:    ".UserController->Register()",
 			Message: errDecode.Error(),
 			Error:   errDecode,
 			Type:    "golang-error",
 		}
-		logger.Log(r.Context(), logger.LevelError, errDecode.Error(), errDecode)
 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 		return
 	}
@@ -179,34 +177,30 @@ func (a *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 	errValidation := validate.Struct(params)
 	if errValidation != nil {
 		err = &types.Error{
-			Path:    ".UserController->CreateUser()",
+			Path:    ".UserController->Register()",
 			Message: errValidation.Error(),
 			Error:   errValidation,
 			Type:    "golang-error",
 		}
-		logger.Log(r.Context(), logger.LevelError, errValidation.Error(), errValidation)
 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 		return
 	}
 
 	result := &models.User{}
 	errTransaction := a.dataManager.RunInTransaction(r.Context(), func(ctx context.Context) error {
-		result, err = a.userService.CreateUser(ctx, params)
+		result, err = a.userService.Register(ctx, params)
 		if err != nil {
 			return err.Error
 		}
 		return nil
 	})
 	if errTransaction != nil {
-		err.Path = ".UserController->CreateUser()" + err.Path
+		err.Path = ".UserController->Register()" + err.Path
 		if errTransaction == user.ErrEmailAlreadyExists {
 			response.Error(w, "email has been registered", http.StatusUnprocessableEntity, *err)
 		} else {
 			response.Error(w, "Internal Server Error", http.StatusInternalServerError, *err)
 		}
-
-		logger.Log(r.Context(), logger.LevelError, errTransaction.Error(), errTransaction)
-
 		return
 	}
 

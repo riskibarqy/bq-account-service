@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/riskibarqy/bq-account-service/config"
-	"github.com/riskibarqy/bq-account-service/external/logger"
 )
 
 var ctx = context.Background()
@@ -17,13 +16,16 @@ var RedisClient *redis.Client
 func Init() {
 	opt, err := redis.ParseURL(config.AppConfig.RedisURL)
 	if err != nil {
-		logger.Log(ctx, logger.LevelError, err.Error(), err)
+		// logger.Log(ctx, logger.LevelError, err.Error(), err)
+		// err = &types.Error{}
+		panic(err)
 	}
 	RedisClient = redis.NewClient(opt)
 
 	// Test the connection
 	_, err = RedisClient.Ping(ctx).Result()
 	if err != nil {
-		logger.Log(ctx, logger.LevelError, err.Error(), err)
+		// logger.Log(ctx, logger.LevelError, err.Error(), err)
+		panic(err)
 	}
 }

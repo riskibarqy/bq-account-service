@@ -1,44 +1,47 @@
 package response
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
-	"github.com/riskibarqy/bq-account-service/internal/types"
-
-	validator "gopkg.in/go-playground/validator.v9"
-
 	"github.com/pkg/errors"
+	"github.com/riskibarqy/bq-account-service/external/logger"
+	"github.com/riskibarqy/bq-account-service/internal/types"
+	"gopkg.in/go-playground/validator.v9"
 )
 
-// FieldError represents error message for each field
 type FieldError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
 }
 
-// ErrorResponse represents error message
 type ErrorResponse struct {
 	Code    string        `json:"code"`
 	Message string        `json:"message"`
-	Fields  []*FieldError `json:"fields"`
+	Fields  []*FieldError `json:"fields,omitempty"`
 }
 
-// MakeFieldError create field error object
-func MakeFieldError(field string, message string) *FieldError {
+func MakeFieldError(field, tag string) *FieldError {
 	return &FieldError{
 		Field:   field,
-		Message: message,
+		Message: fmt.Sprintf("Validation failed on tag '%s'", tag),
 	}
 }
 
-// Error writes error http response
-func Error(w http.ResponseWriter, data string, status int, err types.Error) {
+// Error writes error http response and logs via Uptrace + terminal
+func Error(w http.ResponseWriter, message string, status int, err types.Error) {
+	// Step 1: Log error via logger + uptrace
+	err.Log(context.TODO(), logger.Tracer)
+
+	// Step 2: Setup basic headers
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	var errorCode string
+	// Step 3: Choose error code
+	errorCode := "InternalServerError"
 	switch status {
 	case http.StatusUnauthorized:
 		errorCode = "Unauthorized"
@@ -50,37 +53,35 @@ func Error(w http.ResponseWriter, data string, status int, err types.Error) {
 		errorCode = "ValidationError"
 	}
 
+	// Step 4: Handle validation errors
 	errorFields := []*FieldError{}
-
-	switch err.Error.(type) {
-	case validator.ValidationErrors:
-		data = "Bad Request"
-		for _, err := range err.Error.(validator.ValidationErrors) {
-			e := MakeFieldError(
-				err.Field(),
-				err.ActualTag())
-
-			errorFields = append(errorFields, e)
+	if ve, ok := err.Error.(validator.ValidationErrors); ok {
+		message = "Validation failed"
+		for _, fieldErr := range ve {
+			errorFields = append(errorFields, MakeFieldError(fieldErr.Field(), fieldErr.ActualTag()))
 		}
 	}
 
-	json.NewEncoder(w).Encode(ErrorResponse{
+	// Step 5: Encode response
+	res := ErrorResponse{
 		Code:    errorCode,
-		Message: data,
+		Message: message,
 		Fields:  errorFields,
-	})
+	}
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		log.Printf("[response.Error] failed to encode JSON: %v", err)
+	}
 
+	// Step 6: Optional stack trace logging (e.g. from pkg/errors)
 	if err.Error != nil {
-		// log.Printf("INFO: %v\n", err.Error.Error())
-		// log.Printf("DETAIL [%s - %s]: %s\n", err.Path, err.Type, err.Message)
 		type stackTracer interface {
 			StackTrace() errors.StackTrace
 		}
-
-		var st errors.StackTrace
-		if err, ok := err.Error.(stackTracer); ok {
-			st = err.StackTrace()
-			fmt.Printf("INFO: %+v\n", st[0])
+		if e, ok := err.Error.(stackTracer); ok {
+			st := e.StackTrace()
+			if len(st) > 0 {
+				fmt.Printf("[STACKTRACE] %s: %+v\n", err.Message, st[0])
+			}
 		}
 	}
 }

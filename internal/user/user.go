@@ -12,6 +12,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/riskibarqy/bq-account-service/config"
 	"github.com/riskibarqy/bq-account-service/datatransfers"
+	"github.com/riskibarqy/bq-account-service/external/logger"
 	"github.com/riskibarqy/bq-account-service/internal/redis"
 	"github.com/riskibarqy/bq-account-service/internal/types"
 	"github.com/riskibarqy/bq-account-service/models"
@@ -44,7 +45,8 @@ type Storage interface {
 type ServiceInterface interface {
 	ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.User, int, *types.Error)
 	// GetUser(ctx context.Context, userID int) (*models.User, *types.Error)
-	CreateUser(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error)
+	// CreateUser(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error)
+	Register(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error)
 	// UpdateUser(ctx context.Context, userID int, params *models.User) (*models.User, *types.Error)
 	// DeleteUser(ctx context.Context, userID int) *types.Error
 	// ChangePassword(ctx context.Context, userID int, oldPassword, newPassword string) *types.Error
@@ -132,18 +134,19 @@ func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllPa
 // 	return user, nil
 // }
 
-// CreateUser create user
-func (s *Service) CreateUser(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error) {
+// Register create user
+func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error) {
 	users, _, errType := s.ListUsers(ctx, &datatransfers.FindAllParams{
 		Email: params.Email,
 	})
 	if errType != nil {
-		errType.Path = ".UserService->CreateUser()" + errType.Path
+		errType.Path = ".UserService->Register()" + errType.Path
 		return nil, errType
 	}
+
 	if len(users) > 0 {
 		return nil, &types.Error{
-			Path:    ".UserService->CreateUser()",
+			Path:    ".UserService->Register()",
 			Message: ErrEmailAlreadyExists.Error(),
 			Error:   ErrEmailAlreadyExists,
 			Type:    "validation-error",
@@ -151,6 +154,10 @@ func (s *Service) CreateUser(ctx context.Context, params *datatransfers.Register
 	}
 
 	f, l := utils.SplitName(params.Name)
+
+	if params.Username == "" {
+		params.Username = utils.CreateUsernameFromEmail(params.Email)
+	}
 
 	clerkCreateResponse, errClerk := clerkUser.Create(ctx, &clerkUser.CreateParams{
 		EmailAddresses: &[]string{params.Email},
@@ -162,27 +169,40 @@ func (s *Service) CreateUser(ctx context.Context, params *datatransfers.Register
 	})
 	if errClerk != nil {
 		return nil, &types.Error{
-			Path:    ".UserService->CreateUser()",
+			Path:    ".UserService->Register()",
 			Message: errClerk.Error(),
 			Error:   errClerk,
-			Type:    "validation-error",
+			Type:    "clerk-create-user",
 		}
 	}
 
 	now := utils.Now()
 	user := &models.User{
-		ClerkID:  clerkCreateResponse.ID,
-		Name:     *clerkCreateResponse.FirstName + " " + *clerkCreateResponse.LastName,
-		Email:    *clerkCreateResponse.PrimaryEmailAddressID,
-		Username: *clerkCreateResponse.Username,
-		// Phone:     *clerkCreateResponse.PrimaryPhoneNumberID,
+		ClerkID:   clerkCreateResponse.ID,
+		Name:      *clerkCreateResponse.FirstName + " " + *clerkCreateResponse.LastName,
+		Email:     *clerkCreateResponse.PrimaryEmailAddressID,
+		Username:  *clerkCreateResponse.Username,
+		Phone:     params.Phone,
+		IsActive:  true,
 		CreatedAt: now,
 		UpdatedAt: &now,
 	}
 
 	user, errType = s.userStorage.Insert(ctx, user)
 	if errType != nil {
-		errType.Path = ".UserService->CreateUser()" + errType.Path
+		ctxTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+
+		if _, errClerkDeleteUser := clerkUser.Delete(ctxTimeout, clerkCreateResponse.ID); errClerkDeleteUser != nil {
+			(&types.Error{
+				Path:    ".UserService->Register()",
+				Message: errClerkDeleteUser.Error(),
+				Error:   errClerkDeleteUser,
+				Type:    "clerk-delete-user",
+			}).Log(ctx, logger.Tracer)
+		}
+
+		errType.Path = ".UserService->Register()" + errType.Path
 		return nil, errType
 	}
 

@@ -89,8 +89,8 @@ func (hs *Server) compileRouter() chi.Router {
 	// Public Users Route
 	// Public Users Routes
 	r.Route(baseURL+"/public/users", func(r chi.Router) {
-		r.Get("/", hs.userController.ListUser)    // GET /public/users
-		r.Post("/", hs.userController.CreateUser) // POST /public/users (register)
+		r.Get("/", hs.userController.ListUser)  // GET /public/users
+		r.Post("/", hs.userController.Register) // POST /public/users (register)
 	})
 
 	return r

@@ -25,5 +25,5 @@ type RegisterUser struct {
 	Email    string `json:"email" validate:"required,email"`
 	Username string `json:"username"`
 	Phone    string `json:"phone"`
-	Password string
+	Password string `json:"password"`
 }
