@@ -13,7 +13,7 @@ import (
 	"github.com/riskibarqy/bq-account-service/config"
 	"github.com/riskibarqy/bq-account-service/internal/data"
 	"github.com/riskibarqy/bq-account-service/internal/http/controller"
-	"github.com/riskibarqy/bq-account-service/internal/user"
+	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 	"github.com/rs/cors"
 )
 

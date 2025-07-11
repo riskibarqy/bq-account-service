@@ -6,7 +6,7 @@ import (
 
 	"github.com/riskibarqy/bq-account-service/internal/http/response"
 	"github.com/riskibarqy/bq-account-service/internal/types"
-	"github.com/riskibarqy/bq-account-service/internal/user"
+	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 )
 
 func (hs *Server) authorizedOnly(userService user.ServiceInterface) func(next http.Handler) http.Handler {

@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/riskibarqy/bq-account-service/datatransfers"
 	"github.com/riskibarqy/bq-account-service/internal/data"
+	"github.com/riskibarqy/bq-account-service/internal/domain/entity"
+	"github.com/riskibarqy/bq-account-service/internal/dto/datatransfers"
 	"github.com/riskibarqy/bq-account-service/internal/http/response"
 	"github.com/riskibarqy/bq-account-service/internal/types"
-	"github.com/riskibarqy/bq-account-service/internal/user"
-	"github.com/riskibarqy/bq-account-service/models"
+	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 	"gopkg.in/go-playground/validator.v9"
 )
 
@@ -23,7 +23,7 @@ type UserController struct {
 
 // UserList user list and count
 type UserList struct {
-	Data  []*models.User `json:"data"`
+	Data  []*entity.User `json:"data"`
 	Count int            `json:"count"`
 }
 
@@ -186,7 +186,7 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := &models.User{}
+	result := &entity.User{}
 	errTransaction := a.dataManager.RunInTransaction(r.Context(), func(ctx context.Context) error {
 		result, err = a.userService.Register(ctx, params)
 		if err != nil {
@@ -196,7 +196,7 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 	})
 	if errTransaction != nil {
 		err.Path = ".UserController->Register()" + err.Path
-		if errTransaction == user.ErrEmailAlreadyExists {
+		if errTransaction == types.ErrEmailAlreadyExists {
 			response.Error(w, "email has been registered", http.StatusUnprocessableEntity, *err)
 		} else {
 			response.Error(w, "Internal Server Error", http.StatusInternalServerError, *err)
@@ -294,7 +294,7 @@ func (a *UserController) ListUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if userList == nil {
-		userList = []*models.User{}
+		userList = []*entity.User{}
 	}
 
 	response.JSON(w, http.StatusOK, UserList{

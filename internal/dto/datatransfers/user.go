@@ -1,6 +1,6 @@
 package datatransfers
 
-import "github.com/riskibarqy/bq-account-service/models"
+import "github.com/riskibarqy/bq-account-service/internal/repository/models"
 
 // LoginParams represent the http request data for login user
 type LoginParams struct {

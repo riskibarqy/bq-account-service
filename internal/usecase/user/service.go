@@ -2,7 +2,6 @@ package user
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -11,54 +10,22 @@ import (
 	clerkUser "github.com/clerk/clerk-sdk-go/v2/user"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/riskibarqy/bq-account-service/config"
-	"github.com/riskibarqy/bq-account-service/datatransfers"
 	"github.com/riskibarqy/bq-account-service/external/logger"
+	"github.com/riskibarqy/bq-account-service/internal/domain/entity"
+	"github.com/riskibarqy/bq-account-service/internal/dto/datatransfers"
 	"github.com/riskibarqy/bq-account-service/internal/redis"
+	"github.com/riskibarqy/bq-account-service/internal/repository/models"
+	"github.com/riskibarqy/bq-account-service/internal/repository/user"
 	"github.com/riskibarqy/bq-account-service/internal/types"
-	"github.com/riskibarqy/bq-account-service/models"
 	"github.com/riskibarqy/bq-account-service/utils"
 )
 
-// Errors
-var (
-	ErrWrongPassword      = errors.New("wrong password")
-	ErrWrongEmail         = errors.New("wrong email")
-	ErrEmailAlreadyExists = errors.New("email already exists")
-	ErrNotFound           = errors.New("not found")
-	ErrNoInput            = errors.New("no input")
-	ErrLimitInput         = errors.New("name should be more than 5 char")
-	ErrNameAlreadyExist   = errors.New("name already exits")
-	ErrClerkValidationErr = errors.New("clerk validation error")
-)
-
-// Storage represents the user storage interface
-type Storage interface {
-	FindAll(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.User, *types.Error)
-	FindByID(ctx context.Context, userID int) (*models.User, *types.Error)
-	FindByEmail(ctx context.Context, email string) (*models.User, *types.Error)
-	Insert(ctx context.Context, user *models.User) (*models.User, *types.Error)
-	Update(ctx context.Context, user *models.User) (*models.User, *types.Error)
-	Delete(ctx context.Context, userID int) *types.Error
-}
-
-// ServiceInterface represents the user service interface
-type ServiceInterface interface {
-	ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.User, int, *types.Error)
-	// GetUser(ctx context.Context, userID int) (*models.User, *types.Error)
-	// CreateUser(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error)
-	Register(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error)
-	// UpdateUser(ctx context.Context, userID int, params *models.User) (*models.User, *types.Error)
-	// DeleteUser(ctx context.Context, userID int) *types.Error
-	// ChangePassword(ctx context.Context, userID int, oldPassword, newPassword string) *types.Error
-	// Login(ctx context.Context, email string, password string) (*datatransfers.LoginResponse, *types.Error)
-}
-
 // Service is the domain logic implementation of user Service interface
 type Service struct {
-	userStorage Storage
+	userStorage user.Storage
 }
 
-func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.User, int, *types.Error) {
+func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*entity.User, int, *types.Error) {
 	// Generate cache key
 	byteParams, _ := jsoniter.Marshal(params)
 	cacheKey := fmt.Sprintf("ListUsers-%s", utils.EncodeHexMD5(string(byteParams)))
@@ -67,7 +34,7 @@ func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllPa
 	cached, count, errCache := redis.GetListCache(ctx, cacheKey)
 	if errCache == nil && cached != "" {
 		// If cache hit, unmarshal the cached data into a slice of User models
-		var users []*models.User
+		var users []*entity.User
 		if err := jsoniter.Unmarshal([]byte(cached), &users); err == nil {
 			return users, count, nil
 		}
@@ -135,7 +102,7 @@ func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllPa
 // }
 
 // Register create user
-func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error) {
+func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUser) (*entity.User, *types.Error) {
 	users, _, errType := s.ListUsers(ctx, &datatransfers.FindAllParams{
 		Email: params.Email,
 	})
@@ -147,8 +114,8 @@ func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUs
 	if len(users) > 0 {
 		return nil, &types.Error{
 			Path:    ".UserService->Register()",
-			Message: ErrEmailAlreadyExists.Error(),
-			Error:   ErrEmailAlreadyExists,
+			Message: types.ErrEmailAlreadyExists.Error(),
+			Error:   types.ErrEmailAlreadyExists,
 			Type:    "validation-error",
 		}
 	}
@@ -177,7 +144,7 @@ func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUs
 	}
 
 	now := utils.Now()
-	user := &models.User{
+	userModel := &models.User{
 		ClerkID:   clerkCreateResponse.ID,
 		Name:      *clerkCreateResponse.FirstName + " " + *clerkCreateResponse.LastName,
 		Email:     *clerkCreateResponse.PrimaryEmailAddressID,
@@ -188,7 +155,7 @@ func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUs
 		UpdatedAt: &now,
 	}
 
-	user, errType = s.userStorage.Insert(ctx, user)
+	user, errType := s.userStorage.Insert(ctx, userModel)
 	if errType != nil {
 		ctxTimeout, cancel := context.WithTimeout(ctx, 3*time.Second)
 		defer cancel()
@@ -386,8 +353,8 @@ func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUs
 // }
 
 // NewService creates a new user AppService
-func NewService(
-	userStorage Storage,
+func NewUserService(
+	userStorage user.Storage,
 ) *Service {
 	return &Service{
 		userStorage: userStorage,

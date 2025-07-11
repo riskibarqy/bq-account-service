@@ -15,9 +15,9 @@ import (
 	"github.com/riskibarqy/bq-account-service/internal/data"
 	internalhttp "github.com/riskibarqy/bq-account-service/internal/http"
 	"github.com/riskibarqy/bq-account-service/internal/redis"
-	"github.com/riskibarqy/bq-account-service/internal/user"
-	userPg "github.com/riskibarqy/bq-account-service/internal/user/postgres"
-	"github.com/riskibarqy/bq-account-service/models"
+	"github.com/riskibarqy/bq-account-service/internal/repository/models"
+	userPg "github.com/riskibarqy/bq-account-service/internal/repository/user"
+	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 )
 
 var ctx = context.Background()
@@ -28,11 +28,11 @@ type InternalServices struct {
 }
 
 func buildInternalServices(db *sqlx.DB, _ *config.Config) *InternalServices {
-	userPostgresStorage := userPg.NewPostgresStorage(
+	userPostgresStorage := userPg.NewUserRepository(
 		data.NewPostgresStorage(db, "user", models.User{}),
 	)
 
-	userService := user.NewService(userPostgresStorage)
+	userService := user.NewUserService(userPostgresStorage)
 	return &InternalServices{
 		userService: userService,
 	}

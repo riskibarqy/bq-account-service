@@ -2,11 +2,24 @@ package types
 
 import (
 	"context"
+	"errors"
 	"log"
 	"runtime"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+)
+
+// Errors
+var (
+	ErrWrongPassword      = errors.New("wrong password")
+	ErrWrongEmail         = errors.New("wrong email")
+	ErrEmailAlreadyExists = errors.New("email already exists")
+	ErrNotFound           = errors.New("not found")
+	ErrNoInput            = errors.New("no input")
+	ErrLimitInput         = errors.New("name should be more than 5 char")
+	ErrNameAlreadyExist   = errors.New("name already exits")
+	ErrClerkValidationErr = errors.New("clerk validation error")
 )
 
 // Error represents customized error object

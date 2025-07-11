@@ -13,4 +13,6 @@ type FindAllParams struct {
 	Search   string
 	Token    string
 	UserIDs  []int
+	AppID    int
+	AppIDs   []int
 }
