@@ -3,33 +3,31 @@ package databases
 import (
 	"log"
 
+	"github.com/XSAM/otelsql"
 	"github.com/riskibarqy/bq-account-service/config"
-	sqlxtrace "github.com/uptrace/opentelemetry-go-extra/otelsqlx"
-	sqltrace "go.nhat.io/otelsql"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	otelsqlx "github.com/uptrace/opentelemetry-go-extra/otelsqlx"
+	"go.opentelemetry.io/otel/attribute"
 )
 
-// Init Connect to the database
 func Init() {
-	_, err := sqltrace.Register("postgres",
-		sqltrace.AllowRoot(),
-		sqltrace.TraceQueryWithoutArgs(),
-		sqltrace.TraceRowsClose(),
-		sqltrace.TraceRowsAffected(),
-		sqltrace.WithDatabaseName(config.AppConfig.DBName), // Optional.
-		sqltrace.WithSystem(semconv.DBSystemPostgreSQL),    // Optional.
+	// Register otelsql driver with additional span attributes
+	_, err := otelsql.Register("postgres",
+		otelsql.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.name", config.AppConfig.DBName),
+		),
+		otelsql.WithSQLCommenter(true), // Adds trace info as SQL comment for debugging
 	)
 	if err != nil {
-		log.Fatalf("Failed Register SQLTrace : %v", err)
-	}
-	// Open new database connection
-	db, err := sqlxtrace.Open("postgres", config.AppConfig.DBConnectionString)
-	if err != nil {
-		log.Fatalf("Failed to reconnect to the database: %v", err)
+		log.Fatalf("Failed to register otelsql driver: %v", err)
 	}
 
-	// Assign new connection to AppConfig
+	db, err := otelsqlx.Open("postgres", config.AppConfig.DBConnectionString)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
 	config.AppConfig.DatabaseClient = db
 
-	log.Println("[Postgres] Successfully connected to the database")
+	log.Println("[Postgres] Connected with OpenTelemetry instrumentation")
 }
