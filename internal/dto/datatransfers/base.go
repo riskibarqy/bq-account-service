@@ -10,8 +10,6 @@ type FindAllParams struct {
 	Phone    string
 	Username string
 	Name     string
-	Search   string
-	Token    string
 	UserIDs  []int
 	AppID    int
 	AppIDs   []int

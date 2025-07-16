@@ -11,10 +11,9 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/riskibarqy/bq-account-service/config"
 	"github.com/riskibarqy/bq-account-service/external/logger"
-	"github.com/riskibarqy/bq-account-service/internal/domain/entity"
+	"github.com/riskibarqy/bq-account-service/external/redis"
 	"github.com/riskibarqy/bq-account-service/internal/dto/datatransfers"
-	"github.com/riskibarqy/bq-account-service/internal/redis"
-	"github.com/riskibarqy/bq-account-service/internal/repository/models"
+	"github.com/riskibarqy/bq-account-service/internal/models"
 	"github.com/riskibarqy/bq-account-service/internal/repository/user"
 	"github.com/riskibarqy/bq-account-service/internal/types"
 	"github.com/riskibarqy/bq-account-service/utils"
@@ -25,7 +24,7 @@ type Service struct {
 	userStorage user.Storage
 }
 
-func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*entity.User, int, *types.Error) {
+func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.User, int, *types.Error) {
 	// Generate cache key
 	byteParams, _ := jsoniter.Marshal(params)
 	cacheKey := fmt.Sprintf("ListUsers-%s", utils.EncodeHexMD5(string(byteParams)))
@@ -34,7 +33,7 @@ func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllPa
 	cached, count, errCache := redis.GetListCache(ctx, cacheKey)
 	if errCache == nil && cached != "" {
 		// If cache hit, unmarshal the cached data into a slice of User models
-		var users []*entity.User
+		var users []*models.User
 		if err := jsoniter.Unmarshal([]byte(cached), &users); err == nil {
 			return users, count, nil
 		}
@@ -102,26 +101,20 @@ func (s *Service) ListUsers(ctx context.Context, params *datatransfers.FindAllPa
 // }
 
 // Register create user
-func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUser) (*entity.User, *types.Error) {
+func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUser) (*models.User, *types.Error) {
 	users, _, errType := s.ListUsers(ctx, &datatransfers.FindAllParams{
 		Email: params.Email,
+		Phone: params.Phone,
 	})
 	if errType != nil {
-		errType.Path = ".UserService->Register()" + errType.Path
 		return nil, errType
 	}
 
 	if len(users) > 0 {
-		return nil, &types.Error{
-			Path:    ".UserService->Register()",
-			Message: types.ErrEmailAlreadyExists.Error(),
-			Error:   types.ErrEmailAlreadyExists,
-			Type:    "validation-error",
-		}
+		return nil, types.NewError(types.ErrUserAlreadyExists)
 	}
 
 	f, l := utils.SplitName(params.Name)
-
 	if params.Username == "" {
 		params.Username = utils.CreateUsernameFromEmail(params.Email)
 	}
@@ -129,10 +122,9 @@ func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUs
 	clerkCreateResponse, errClerk := clerkUser.Create(ctx, &clerkUser.CreateParams{
 		EmailAddresses: &[]string{params.Email},
 		Username:       &params.Username,
-		// PhoneNumbers:   &[]string{params.Phone},
-		Password:  &params.Password,
-		FirstName: &f,
-		LastName:  &l,
+		Password:       &params.Password,
+		FirstName:      &f,
+		LastName:       &l,
 	})
 	if errClerk != nil {
 		return nil, &types.Error{
@@ -147,7 +139,7 @@ func (s *Service) Register(ctx context.Context, params *datatransfers.RegisterUs
 	userModel := &models.User{
 		ClerkID:   clerkCreateResponse.ID,
 		Name:      *clerkCreateResponse.FirstName + " " + *clerkCreateResponse.LastName,
-		Email:     *clerkCreateResponse.PrimaryEmailAddressID,
+		Email:     params.Email,
 		Username:  *clerkCreateResponse.Username,
 		Phone:     params.Phone,
 		IsActive:  true,

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/ancalabrese/reload"
@@ -12,10 +11,10 @@ import (
 	"github.com/riskibarqy/bq-account-service/databases"
 	"github.com/riskibarqy/bq-account-service/external/clerk"
 	"github.com/riskibarqy/bq-account-service/external/logger"
+	"github.com/riskibarqy/bq-account-service/external/redis"
 	"github.com/riskibarqy/bq-account-service/internal/data"
 	internalhttp "github.com/riskibarqy/bq-account-service/internal/http"
-	"github.com/riskibarqy/bq-account-service/internal/redis"
-	"github.com/riskibarqy/bq-account-service/internal/repository/models"
+	"github.com/riskibarqy/bq-account-service/internal/models"
 	userPg "github.com/riskibarqy/bq-account-service/internal/repository/user"
 	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 )
@@ -78,13 +77,13 @@ func main() {
 		}
 	}()
 
-	redis.Init()
+	redis.Init(ctx)
 	clerk.Init()
 	logger.Init()
 	defer logger.Shutdown(ctx)
 
 	// Print the current mode
-	fmt.Printf("Running in %s mode\n", config.AppConfig.AppMode)
+	log.Printf("Running in %s mode\n", config.AppConfig.AppMode)
 
 	dataManager := data.NewManager(config.AppConfig.DatabaseClient)
 	internalServices := buildInternalServices(config.AppConfig.DatabaseClient, config.AppConfig)

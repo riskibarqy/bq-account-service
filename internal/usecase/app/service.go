@@ -9,9 +9,9 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/riskibarqy/bq-account-service/config"
-	"github.com/riskibarqy/bq-account-service/internal/domain/entity"
+	"github.com/riskibarqy/bq-account-service/external/redis"
 	"github.com/riskibarqy/bq-account-service/internal/dto/datatransfers"
-	"github.com/riskibarqy/bq-account-service/internal/redis"
+	"github.com/riskibarqy/bq-account-service/internal/models"
 	"github.com/riskibarqy/bq-account-service/internal/repository/app"
 	"github.com/riskibarqy/bq-account-service/internal/types"
 	"github.com/riskibarqy/bq-account-service/utils"
@@ -22,7 +22,7 @@ type AppService struct {
 	appStorage app.Storage
 }
 
-func (s *AppService) ListApps(ctx context.Context, params *datatransfers.FindAllParams) ([]*entity.App, int, *types.Error) {
+func (s *AppService) ListApps(ctx context.Context, params *datatransfers.FindAllParams) ([]*models.App, int, *types.Error) {
 	// Generate cache key
 	byteParams, _ := jsoniter.Marshal(params)
 	cacheKey := fmt.Sprintf("ListApps-%s", utils.EncodeHexMD5(string(byteParams)))
@@ -31,7 +31,7 @@ func (s *AppService) ListApps(ctx context.Context, params *datatransfers.FindAll
 	cached, count, errCache := redis.GetListCache(ctx, cacheKey)
 	if errCache == nil && cached != "" {
 		// If cache hit, unmarshal the cached data into a slice of App entity
-		var apps []*entity.App
+		var apps []*models.App
 		if err := jsoniter.Unmarshal([]byte(cached), &apps); err == nil {
 			return apps, count, nil
 		}

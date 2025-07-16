@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"github.com/riskibarqy/bq-account-service/internal/data"
-	"github.com/riskibarqy/bq-account-service/internal/domain/entity"
 	"github.com/riskibarqy/bq-account-service/internal/dto/datatransfers"
 	"github.com/riskibarqy/bq-account-service/internal/http/response"
+	"github.com/riskibarqy/bq-account-service/internal/models"
 	"github.com/riskibarqy/bq-account-service/internal/types"
 	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 	"gopkg.in/go-playground/validator.v9"
@@ -23,7 +23,7 @@ type UserController struct {
 
 // UserList user list and count
 type UserList struct {
-	Data  []*entity.User `json:"data"`
+	Data  []*models.User `json:"data"`
 	Count int            `json:"count"`
 }
 
@@ -39,7 +39,7 @@ type UserList struct {
 // 			Path:    ".UserController->Login()",
 // 			Message: errDecode.Error(),
 // 			Error:   errDecode,
-// 			Type:    "golang-error",
+// 			Type:    types.ErrTypesHandlerError,
 // 		}
 // 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 // 		return
@@ -82,7 +82,7 @@ type UserList struct {
 // 			Path:    ".UserController->ChangePassword()",
 // 			Message: errDecode.Error(),
 // 			Error:   errDecode,
-// 			Type:    "golang-error",
+// 			Type:    types.ErrTypesHandlerError,
 // 		}
 // 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 // 		return
@@ -116,7 +116,7 @@ type UserList struct {
 // 			Path:    ".UserController->UpdateUser()",
 // 			Message: errDecode.Error(),
 // 			Error:   errDecode,
-// 			Type:    "golang-error",
+// 			Type:    types.ErrTypesHandlerError,
 // 		}
 // 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 // 		return
@@ -128,7 +128,7 @@ type UserList struct {
 // 			Path:    ".UserController->UpdateUser()",
 // 			Message: errConversion.Error(),
 // 			Error:   errConversion,
-// 			Type:    "golang-error",
+// 			Type:    types.ErrTypesHandlerError,
 // 		}
 // 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 // 		return
@@ -157,6 +157,7 @@ type UserList struct {
 
 func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 	var err *types.Error
+	ctx := r.Context()
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -167,9 +168,9 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 			Path:    ".UserController->Register()",
 			Message: errDecode.Error(),
 			Error:   errDecode,
-			Type:    "golang-error",
+			Type:    types.ErrTypesHandlerError,
 		}
-		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
+		response.Error(ctx, w, "Bad Request", http.StatusBadRequest, *err)
 		return
 	}
 
@@ -180,14 +181,14 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 			Path:    ".UserController->Register()",
 			Message: errValidation.Error(),
 			Error:   errValidation,
-			Type:    "golang-error",
+			Type:    types.ErrTypesHandlerError,
 		}
-		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
+		response.Error(ctx, w, "Bad Request", http.StatusBadRequest, *err)
 		return
 	}
 
-	result := &entity.User{}
-	errTransaction := a.dataManager.RunInTransaction(r.Context(), func(ctx context.Context) error {
+	result := &models.User{}
+	errTransaction := a.dataManager.RunInTransaction(ctx, func(ctx context.Context) error {
 		result, err = a.userService.Register(ctx, params)
 		if err != nil {
 			return err.Error
@@ -196,10 +197,10 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 	})
 	if errTransaction != nil {
 		err.Path = ".UserController->Register()" + err.Path
-		if errTransaction == types.ErrEmailAlreadyExists {
-			response.Error(w, "email has been registered", http.StatusUnprocessableEntity, *err)
+		if errTransaction == types.ErrUserAlreadyExists {
+			response.Error(ctx, w, types.ErrUserAlreadyExists.Error(), http.StatusUnprocessableEntity, *err)
 		} else {
-			response.Error(w, "Internal Server Error", http.StatusInternalServerError, *err)
+			response.Error(ctx, w, "Internal Server Error", http.StatusInternalServerError, *err)
 		}
 		return
 	}
@@ -216,7 +217,7 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 // 			Path:    ".UserController->DeleteUser()",
 // 			Message: errConversion.Error(),
 // 			Error:   errConversion,
-// 			Type:    "golang-error",
+// 			Type:    types.ErrTypesHandlerError,
 // 		}
 // 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 // 		return
@@ -240,6 +241,7 @@ func (a *UserController) Register(w http.ResponseWriter, r *http.Request) {
 
 func (a *UserController) ListUser(w http.ResponseWriter, r *http.Request) {
 	var err *types.Error
+	ctx := r.Context()
 
 	queryValues := r.URL.Query()
 	var limit = 10
@@ -251,9 +253,9 @@ func (a *UserController) ListUser(w http.ResponseWriter, r *http.Request) {
 				Path:    ".UserController->ListUser()",
 				Message: errConversion.Error(),
 				Error:   errConversion,
-				Type:    "golang-error",
+				Type:    types.ErrTypesHandlerError,
 			}
-			response.Error(w, "Bad Request", http.StatusBadRequest, *err)
+			response.Error(ctx, w, "Bad Request", http.StatusBadRequest, *err)
 			return
 		}
 	}
@@ -266,14 +268,12 @@ func (a *UserController) ListUser(w http.ResponseWriter, r *http.Request) {
 				Path:    ".UserController->ListUser()",
 				Message: errConversion.Error(),
 				Error:   errConversion,
-				Type:    "golang-error",
+				Type:    types.ErrTypesHandlerError,
 			}
-			response.Error(w, "Bad Request", http.StatusBadRequest, *err)
+			response.Error(ctx, w, "Bad Request", http.StatusBadRequest, *err)
 			return
 		}
 	}
-
-	var search = queryValues.Get("search")
 
 	if limit < 0 {
 		limit = 10
@@ -282,19 +282,18 @@ func (a *UserController) ListUser(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 	userList, count, err := a.userService.ListUsers(r.Context(), &datatransfers.FindAllParams{
-		Limit:  limit,
-		Search: search,
-		Page:   page,
+		Limit: limit,
+		Page:  page,
 	})
 	if err != nil {
 		err.Path = ".UserController->ListUser()" + err.Path
 		if err.Error != data.ErrNotFound {
-			response.Error(w, "Internal Server Error", http.StatusInternalServerError, *err)
+			response.Error(ctx, w, "Internal Server Error", http.StatusInternalServerError, *err)
 			return
 		}
 	}
 	if userList == nil {
-		userList = []*entity.User{}
+		userList = []*models.User{}
 	}
 
 	response.JSON(w, http.StatusOK, UserList{
@@ -313,7 +312,7 @@ func (a *UserController) ListUser(w http.ResponseWriter, r *http.Request) {
 // 			Path:    ".UserController->UpdateUser()",
 // 			Message: errConversion.Error(),
 // 			Error:   errConversion,
-// 			Type:    "golang-error",
+// 			Type:    types.ErrTypesHandlerError,
 // 		}
 // 		response.Error(w, "Bad Request", http.StatusBadRequest, *err)
 // 		return

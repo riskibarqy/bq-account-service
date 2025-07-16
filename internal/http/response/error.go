@@ -32,9 +32,9 @@ func MakeFieldError(field, tag string) *FieldError {
 }
 
 // Error writes error http response and logs via Uptrace + terminal
-func Error(w http.ResponseWriter, message string, status int, err types.Error) {
+func Error(ctx context.Context, w http.ResponseWriter, message string, status int, err types.Error) {
 	// Step 1: Log error via logger + uptrace
-	err.Log(context.TODO(), logger.Tracer)
+	err.Log(ctx, logger.Tracer)
 
 	// Step 2: Setup basic headers
 	w.Header().Set("Content-Type", "application/json")

@@ -1,19 +1,29 @@
 package databases
 
 import (
-	"fmt"
 	"log"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/riskibarqy/bq-account-service/config"
+	sqlxtrace "github.com/uptrace/opentelemetry-go-extra/otelsqlx"
+	sqltrace "go.nhat.io/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 // Init Connect to the database
 func Init() {
-	fmt.Println("DB Connection String:", config.AppConfig.DBConnectionString)
-
+	_, err := sqltrace.Register("postgres",
+		sqltrace.AllowRoot(),
+		sqltrace.TraceQueryWithoutArgs(),
+		sqltrace.TraceRowsClose(),
+		sqltrace.TraceRowsAffected(),
+		sqltrace.WithDatabaseName(config.AppConfig.DBName), // Optional.
+		sqltrace.WithSystem(semconv.DBSystemPostgreSQL),    // Optional.
+	)
+	if err != nil {
+		log.Fatalf("Failed Register SQLTrace : %v", err)
+	}
 	// Open new database connection
-	db, err := sqlx.Open("postgres", config.AppConfig.DBConnectionString)
+	db, err := sqlxtrace.Open("postgres", config.AppConfig.DBConnectionString)
 	if err != nil {
 		log.Fatalf("Failed to reconnect to the database: %v", err)
 	}
@@ -21,5 +31,5 @@ func Init() {
 	// Assign new connection to AppConfig
 	config.AppConfig.DatabaseClient = db
 
-	log.Println("Successfully connected to the database")
+	log.Println("[Postgres] Successfully connected to the database")
 }

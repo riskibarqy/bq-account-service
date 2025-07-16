@@ -1,11 +1,18 @@
 package utils
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/riskibarqy/bq-account-service/config"
+	"github.com/riskibarqy/bq-account-service/external/logger"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func Now() int {
@@ -66,4 +73,23 @@ func CreateUsernameFromEmail(email string) string {
 	}
 
 	return username
+}
+
+func WithDBSpan(ctx context.Context, operation string, statement string, fn func(ctx context.Context) error) error {
+	tracer := logger.Tracer
+	ctx, span := tracer.Start(ctx, operation,
+		trace.WithAttributes(
+			attribute.String("db.system", "postgresql"),
+			attribute.String("db.name", config.AppConfig.DBName),
+			attribute.String("db.statement", statement),
+		),
+	)
+	defer span.End()
+
+	err := fn(ctx)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	return err
 }

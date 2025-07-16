@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 )
@@ -16,6 +17,7 @@ const (
 	appDescription     = "APP_DESCRIPTION"
 	appPort            = "APP_PORT"
 	dbConnectionString = "DB_CONNECTION_STRING"
+	dbName             = "DB_NAME"
 	jwtSecret          = "JWT_SECRET"
 	clerkSecretKey     = "CLERK_SECRET_KEY"
 	redisURL           = "REDIS_URL"
@@ -34,12 +36,14 @@ type Config struct {
 	AppDescription     string `json:"appDescription"`
 	AppPort            string `json:"appPort"`
 	DBConnectionString string `json:"dbConnectionString"`
+	DBName             string `json:"dbName"`
 	JWTSecret          string `json:"jwtSecret"`
 	ClerkSecretKey     string `json:"clerkSecret"`
 	RedisURL           string `json:"redisUrl"`
 	UptraceDSN         string `json:"uptraceDsn"`
 
 	DatabaseClient *sqlx.DB
+	RedisClient    *redis.UniversalClient
 }
 
 type Metadata struct {
@@ -96,6 +100,7 @@ func GetConfiguration() {
 	AppConfig.AppPort = getEnvOrDefault(appPort, "8080").(string)
 
 	AppConfig.DBConnectionString = getEnvOrDefault(dbConnectionString, "postgres://user:password@localhost:5432/account_db?sslmode=disable").(string)
+	AppConfig.DBName = getEnvOrDefault(dbName, "dbname").(string)
 	AppConfig.JWTSecret = getEnvOrDefault(jwtSecret, "supersecret").(string)
 	AppConfig.ClerkSecretKey = getEnvOrDefault(clerkSecretKey, "test").(string)
 	AppConfig.RedisURL = getEnvOrDefault(redisURL, "redis://localhost:6379").(string)

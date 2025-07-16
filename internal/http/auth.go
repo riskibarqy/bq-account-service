@@ -17,7 +17,7 @@ func (hs *Server) authorizedOnly(userService user.ServiceInterface) func(next ht
 			ctx := r.Context()
 			token = getBearerToken(r)
 			if token == "" {
-				response.Error(w, "Unauthorized", http.StatusUnauthorized, types.Error{
+				response.Error(ctx, w, "Unauthorized", http.StatusUnauthorized, types.Error{
 					Path:    ".Server->authorizeOnly()",
 					Message: "",
 					Error:   nil,

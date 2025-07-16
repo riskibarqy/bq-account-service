@@ -15,10 +15,7 @@ var Tracer trace.Tracer
 // Call this once in main()
 func Init() {
 
-	// Configure Uptrace with DSN and optional tags
 	uptrace.ConfigureOpentelemetry(
-		// Make sure UPTRACE_DSN is set in env
-		// e.g., export UPTRACE_DSN=https://<token>@api.uptrace.dev/project_id
 		uptrace.WithDSN(config.AppConfig.UptraceDSN),
 		uptrace.WithServiceName(config.AppConfig.AppName),
 		uptrace.WithServiceVersion(config.AppConfig.AppVersion),

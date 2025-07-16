@@ -15,6 +15,7 @@ import (
 	"github.com/riskibarqy/bq-account-service/internal/http/controller"
 	"github.com/riskibarqy/bq-account-service/internal/usecase/user"
 	"github.com/rs/cors"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Server represents the http server that handles the requests
@@ -39,6 +40,7 @@ func (hs *Server) compileRouter() chi.Router {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(otelhttp.NewMiddleware(config.AppConfig.AppName))
 
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further

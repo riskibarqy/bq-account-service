@@ -23,7 +23,7 @@ func (p Metadata) Value() (driver.Value, error) {
 func (p *Metadata) Scan(src interface{}) error {
 	source, ok := src.([]byte)
 	if !ok {
-		return errors.New("Type assertion .([]byte) failed")
+		return errors.New("type assertion .([]byte) failed")
 	}
 
 	var i interface{}
@@ -34,7 +34,7 @@ func (p *Metadata) Scan(src interface{}) error {
 
 	*p, ok = i.(map[string]interface{})
 	if !ok {
-		return errors.New("Type assertion .(map[string]interface{}) failed")
+		return errors.New("type assertion .(map[string]interface{}) failed")
 	}
 
 	return nil
@@ -110,7 +110,7 @@ var (
 	arrayValue = fmt.Sprintf("(?P<value>(%s|%s))", unquotedValue, quotedValue)
 
 	// Array values are separated with a comma IF there is more than one value:
-	arrayExp = regexp.MustCompile(fmt.Sprintf("%s", arrayValue))
+	arrayExp = regexp.MustCompile(arrayValue)
 
 	valueIndex int
 )

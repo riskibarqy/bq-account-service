@@ -14,12 +14,20 @@ import (
 var (
 	ErrWrongPassword      = errors.New("wrong password")
 	ErrWrongEmail         = errors.New("wrong email")
+	ErrUserAlreadyExists  = errors.New("user already exists")
 	ErrEmailAlreadyExists = errors.New("email already exists")
 	ErrNotFound           = errors.New("not found")
 	ErrNoInput            = errors.New("no input")
 	ErrLimitInput         = errors.New("name should be more than 5 char")
 	ErrNameAlreadyExist   = errors.New("name already exits")
 	ErrClerkValidationErr = errors.New("clerk validation error")
+)
+
+var (
+	ErrTypesHandlerError = "handler-error"
+	ErrTypesRepoError    = "repo-error"
+	ErrTypesServiceError = "service-error"
+	ErrTypesClerkError   = "clerk-error"
 )
 
 // Error represents customized error object
@@ -29,6 +37,9 @@ type Error struct {
 	Error    error
 	Type     string
 	IsIgnore bool
+	FuncName string
+	File     string
+	Line     int
 }
 
 // ✅ Centralized logging and tracing
@@ -37,13 +48,9 @@ func (e *Error) Log(ctx context.Context, tracer trace.Tracer) {
 		return
 	}
 
-	pc, file, line, ok := runtime.Caller(1)
-	funcName := "unknown"
-	if ok {
-		if fn := runtime.FuncForPC(pc); fn != nil {
-			funcName = fn.Name()
-		}
-	}
+	funcName := e.FuncName
+	file := e.File
+	line := e.Line
 
 	log.Printf("[ERROR] %s:%d %s | %s: %v\n", file, line, funcName, e.Message, e.Error)
 
@@ -64,4 +71,24 @@ func (e *Error) Log(ctx context.Context, tracer trace.Tracer) {
 func (e *Error) LogAndReturn(ctx context.Context, tracer trace.Tracer) *Error {
 	e.Log(ctx, tracer)
 	return e
+}
+
+func NewError(err error) *Error {
+	pc, file, line, ok := runtime.Caller(1) // caller of NewError
+	funcName := "unknown"
+	if ok {
+		if fn := runtime.FuncForPC(pc); fn != nil {
+			funcName = fn.Name()
+		}
+	}
+
+	return &Error{
+		// Path:     path,
+		Message: err.Error(),
+		// Type:     errType,
+		Error:    err,
+		FuncName: funcName,
+		File:     file,
+		Line:     line,
+	}
 }
